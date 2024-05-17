@@ -49,34 +49,7 @@ pub fn build(b: *Build) void {
         .dest_dir = .disabled,
     }).step);
 
-    // const showcase_dep = b.dependency("showcase", .{
-    //     .optimize = optimize,
-    // });
-    // b.getInstallStep().dependOn(showcase_dep.builder.getInstallStep());
-
     var dep: std.Build.Dependency = .{ .builder = b };
-    const feature_test_cart = add_cart(&dep, b, .{
-        .name = "feature_test",
-        .optimize = optimize,
-        .root_source_file = b.path("samples/feature_test.zig"),
-    });
-    feature_test_cart.install(b);
-    const watch_run_step = feature_test_cart.install_with_watcher(&dep, b, .{});
-
-    //{
-    //    const cart = add_cart(&dep, b, .{
-    //        .name = "blobs",
-    //        .optimize = .ReleaseSmall,
-    //        .root_source_file = .{ .path = "samples/blobs/blobs.zig" },
-    //    });
-    //    cart.install(b);
-    //    b.step("watch-blobs", "Watch/run blobs in the simulator").dependOn(
-    //        &cart.install_with_watcher(&dep, b, .{}).step,
-    //    );
-    //}
-
-    const watch_step = b.step("watch", "");
-    watch_step.dependOn(&watch_run_step.step);
 
     inline for (.{
         "blinky",
