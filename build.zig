@@ -49,10 +49,10 @@ pub fn build(b: *Build) void {
         .dest_dir = .disabled,
     }).step);
 
-    //const showcase_dep = b.dependency("showcase", .{
-    //    .optimize = optimize,
-    //});
-    //b.getInstallStep().dependOn(showcase_dep.builder.getInstallStep());
+    // const showcase_dep = b.dependency("showcase", .{
+    //     .optimize = optimize,
+    // });
+    // b.getInstallStep().dependOn(showcase_dep.builder.getInstallStep());
 
     var dep: std.Build.Dependency = .{ .builder = b };
     const feature_test_cart = add_cart(&dep, b, .{
