@@ -13,11 +13,11 @@ const hue_colors = init_hue_colors: {
     for (0..initial_hue_colors.len) |i| {
         const fi: f32 = @floatFromInt(i);
         const rgb = hsv2rgb(fi * 360.0 / 256.0, 1, 1);
-        initial_hue_colors[i] = .{
-            .r = @intFromFloat(rgb.r * 31),
-            .g = @intFromFloat(rgb.g * 63),
-            .b = @intFromFloat(rgb.b * 31),
-        };
+        initial_hue_colors[i] = cart.DisplayColor.new(
+            @intFromFloat(rgb.r * 31),
+            @intFromFloat(rgb.g * 63),
+            @intFromFloat(rgb.b * 31),
+        );
     }
     break :init_hue_colors initial_hue_colors;
 };

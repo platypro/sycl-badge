@@ -1,3 +1,4 @@
+const std = @import("std");
 const cart = @import("cart-api");
 
 const fb_width = 256;
@@ -68,7 +69,7 @@ pub const Sprite = struct {
                 if (dst_x < 0 or dst_x >= cart.screen_width or dst_y < 0 or dst_y >= cart.screen_height) continue;
                 const index = (y + src_y0) * sprite.width + (if (flip_x) @abs(src_rect.w) - 1 - x else x) + src_x0;
                 const color = sprite.colors[sprite.indices.get(index)];
-                if (color.r == 31 and color.g == 0 and color.b == 31) continue;
+                if (std.meta.eql(color, cart.DisplayColor.new(31, 0, 31))) continue;
                 cart.framebuffer[@as(usize, @intCast(dst_y * cart.screen_width + dst_x))] = color;
             }
         }
@@ -94,7 +95,7 @@ pub const Tilemap = struct {
                 const src_x = (tile_index % 16) * tile_size + (x % tile_size);
                 const src_y = (tile_index / 16) * tile_size + (y % tile_size);
                 const color = tiles.colors[tiles.indices.get(src_y * tiles.width + src_x)];
-                if (color.r == 31 and color.g == 0 and color.b == 31) continue;
+                if (std.meta.eql(color, cart.DisplayColor.new(31, 0, 31))) continue;
                 cart.framebuffer[@as(usize, @intCast((dst_y) * cart.screen_width + dst_x))] = color;
             }
         }
@@ -104,5 +105,5 @@ pub const Tilemap = struct {
 pub fn init() void {}
 
 pub fn clear() void {
-    @memset(cart.framebuffer, .{ .r = 0, .g = 0, .b = 0 });
+    @memset(cart.framebuffer, cart.DisplayColor.new(0, 0, 0));
 }

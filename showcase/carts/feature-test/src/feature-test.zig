@@ -66,11 +66,11 @@ export fn update() void {
 
     for (0..cart.screen_height) |y| {
         for (0..cart.screen_width) |x| {
-            cart.framebuffer[y * cart.screen_width + x] = .{
-                .r = @intFromFloat(@as(f32, @floatFromInt(x)) / cart.screen_width * 31),
-                .g = green_565,
-                .b = @intFromFloat(@as(f32, @floatFromInt(y)) / cart.screen_height * 31),
-            };
+            cart.framebuffer[y * cart.screen_width + x] = cart.DisplayColor.new(
+                @intFromFloat(@as(f32, @floatFromInt(x)) / cart.screen_width * 31),
+                green_565,
+                @intFromFloat(@as(f32, @floatFromInt(y)) / cart.screen_height * 31),
+            );
         }
     }
 
@@ -84,10 +84,10 @@ export fn update() void {
 
     cart.blit(.{
         .sprite = &.{
-            .{ .r = 31, .g = 0, .b = 0 },
-            .{ .r = 0, .g = 0, .b = 31 },
-            .{ .r = 31, .g = 0, .b = 0 },
-            .{ .r = 0, .g = 0, .b = 31 },
+            cart.DisplayColor.new(31, 0, 0),
+            cart.DisplayColor.new(0, 0, 31),
+            cart.DisplayColor.new(31, 0, 0),
+            cart.DisplayColor.new(0, 0, 31),
         },
         .x = 40,
         .y = 40,
@@ -101,21 +101,21 @@ export fn update() void {
         .y1 = 50,
         .x2 = 70,
         .y2 = 70,
-        .color = .{ .r = 0, .g = 63, .b = 0 },
+        .color = cart.DisplayColor.new(0, 63, 0),
     });
 
     cart.hline(.{
         .x = 30,
         .y = 30,
         .len = 20,
-        .color = .{ .r = 31, .g = 0, .b = 0 },
+        .color = cart.DisplayColor.new(31, 0, 0),
     });
 
     cart.vline(.{
         .x = 30,
         .y = 30,
         .len = 20,
-        .color = .{ .r = 31, .g = 0, .b = 0 },
+        .color = cart.DisplayColor.new(31, 0, 0),
     });
 
     cart.oval(.{
@@ -123,8 +123,8 @@ export fn update() void {
         .y = 80,
         .width = 10,
         .height = 10,
-        .stroke_color = .{ .r = 0, .g = 0, .b = 31 },
-        .fill_color = .{ .r = 31, .g = 0, .b = 31 },
+        .stroke_color = cart.DisplayColor.new(0, 0, 31),
+        .fill_color = cart.DisplayColor.new(31, 0, 31),
     });
 
     cart.rect(.{
@@ -132,23 +132,23 @@ export fn update() void {
         .y = 100,
         .width = 10,
         .height = 10,
-        .stroke_color = .{ .r = 31, .g = 31, .b = 31 },
-        .fill_color = .{ .r = 0, .g = 63, .b = 31 },
+        .stroke_color = cart.DisplayColor.new(31, 31, 31),
+        .fill_color = cart.DisplayColor.new(0, 63, 31),
     });
 
     cart.text(.{
         .str = fbs.getWritten(),
         .x = 0,
         .y = 0,
-        .text_color = .{ .r = 0, .g = 0, .b = 0 },
-        .background_color = .{ .r = 31, .g = 63, .b = 31 },
+        .text_color = cart.DisplayColor.new(0, 0, 0),
+        .background_color = cart.DisplayColor.new(31, 63, 31),
     });
 
     cart.text(.{
         .str = "\x80\x81\x82\x83\x84\x85\x86\x87\x88",
         .x = 0,
         .y = 120,
-        .text_color = .{ .r = 0, .g = 0, .b = 0 },
-        .background_color = .{ .r = 31, .g = 63, .b = 31 },
+        .text_color = cart.DisplayColor.new(0, 0, 0),
+        .background_color = cart.DisplayColor.new(31, 63, 31),
     });
 }

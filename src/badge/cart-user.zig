@@ -24,12 +24,19 @@ pub const NeopixelColor = extern struct { g: u8, r: u8, b: u8 };
 
 /// RGB565, high color
 pub const DisplayColor = packed struct(u16) {
-    /// 0-31
+    g1: u3,
     b: u5,
-    /// 0-63
-    g: u6,
-    /// 0-31
     r: u5,
+    g2: u3,
+
+    pub inline fn new(r: u8, g: u8, b: u8) DisplayColor {
+        return DisplayColor{
+            .b = @truncate(b),
+            .r = @truncate(r),
+            .g1 = @truncate(g),
+            .g2 = @truncate(g >> 3),
+        };
+    }
 
     pub const Optional = enum(i32) {
         none = -1,

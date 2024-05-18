@@ -47,16 +47,16 @@ fn convert(args: ConvertFile, writer: std.fs.File.Writer) !void {
 
     var colors = std.ArrayList(Color).init(allocator);
     defer colors.deinit();
-    if (args.transparency) try colors.append(.{ .r = 31, .g = 0, .b = 31 });
+    if (args.transparency) try colors.append(Color.new(31, 0, 31));
     var indices = try std.ArrayList(usize).initCapacity(allocator, image.width * image.height);
     defer indices.deinit();
     var it = image.iterator();
     while (it.next()) |pixel| {
-        const color = Color{
-            .r = @intFromFloat(31.0 * pixel.r),
-            .g = @intFromFloat(63.0 * pixel.g),
-            .b = @intFromFloat(31.0 * pixel.b),
-        };
+        const color = Color.new(
+            @intFromFloat(31.0 * pixel.r),
+            @intFromFloat(63.0 * pixel.g),
+            @intFromFloat(31.0 * pixel.b),
+        );
         const index = try getIndex(&colors, color);
         indices.appendAssumeCapacity(index);
     }
@@ -80,7 +80,7 @@ fn convert(args: ConvertFile, writer: std.fs.File.Writer) !void {
 
         try writer.writeAll("    pub const colors = [_]DisplayColor{\n");
         for (colors.items) |c| {
-            try writer.print("        .{{ .r = {}, .g = {}, .b = {} }},\n", .{ c.r, c.g, c.b });
+            try writer.print("        DisplayColor.new({}, {}, {}),\n", .{ c.r, c.get_g(), c.b });
         }
         try writer.writeAll("    };\n");
 
@@ -98,18 +98,28 @@ fn convert(args: ConvertFile, writer: std.fs.File.Writer) !void {
 }
 
 pub const Color = packed struct(u16) {
+    g1: u3,
     b: u5,
-    g: u6,
     r: u5,
+    g2: u3,
 
-    fn eql(self: Color, other: Color) bool {
-        return @as(u16, @bitCast(self)) == @as(u16, @bitCast(other));
+    pub inline fn get_g(self: @This()) u8 {
+        return @as(u8, self.g1) | (@as(u8, self.g2) << 3);
+    }
+
+    pub inline fn new(r: u8, g: u8, b: u8) Color {
+        return Color{
+            .b = @truncate(b),
+            .r = @truncate(r),
+            .g1 = @truncate(g),
+            .g2 = @truncate(g >> 3),
+        };
     }
 };
 
 fn getIndex(colors: *std.ArrayList(Color), color: Color) !usize {
     for (colors.items, 0..) |c, i| {
-        if (c.eql(color)) return i;
+        if (std.meta.eql(c, color)) return i;
     }
     try colors.append(color);
     return colors.items.len - 1;

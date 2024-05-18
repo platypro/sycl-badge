@@ -3,9 +3,9 @@ const cart = @import("cart-api");
 
 const total_width = 67;
 const total_height = 54;
-const black: cart.DisplayColor = .{ .r = 0, .g = 0, .b = 0 };
-const red: cart.DisplayColor = .{ .r = 31, .g = 0, .b = 0 };
-const dark_red: cart.DisplayColor = .{ .r = 25, .g = 0, .b = 0 };
+const black = cart.DisplayColor.new(0, 0, 0);
+const red = cart.DisplayColor.new(31, 0, 0);
+const dark_red = cart.DisplayColor.new(25, 0, 0);
 
 var tx: usize = 0;
 var ty: usize = 0;
@@ -251,7 +251,7 @@ export fn update() void {
     r(0, 0, total_width, 1);
     r(0, 11, total_width, total_height - 11);
     pulse +%= 2;
-    color = .{ .r = 31 - pulse, .g = 0, .b = 0 };
+    color = cart.DisplayColor.new(31, 0, 0);
     r(0, 1, total_width, 10);
     color = red;
     alert();

@@ -4,13 +4,18 @@ pub const FrameBuffer = extern union {
     bpp24: [width][height]Color24,
 };
 pub const Bpp = std.meta.FieldEnum(FrameBuffer);
+
+// These Colour definitions are OUT OF DATE because of the DMA changes.
+
+// Color12 encodes TWO colours!!!
 pub const Color12 = extern struct {
     b0_g0: packed struct(u8) { b0: u4, g0: u4 },
     r0_b1: packed struct(u8) { r0: u4, b1: u4 },
     g1_r1: packed struct(u8) { g1: u4, r1: u4 },
 };
+
 pub const Color16 = packed struct(u16) { b: u5, g: u6, r: u5 };
-pub const Color24 = extern struct { b: u8, g: u8, r: u8 };
+pub const Color24 = extern struct { r: u8, g: u8, b: u8 };
 pub const Rect = struct { x: u8, y: u8, width: u8, height: u8 };
 
 pub const width = 160;
@@ -101,17 +106,17 @@ pub fn init(bpp: Bpp, fb: *const volatile FrameBuffer) void {
     }))}, 1);
     var ca: [4]u8 = undefined;
     std.mem.writeInt(u16, ca[0..2], 0, .big);
-    std.mem.writeInt(u16, ca[2..4], height - 1, .big);
+    std.mem.writeInt(u16, ca[2..4], width - 1, .big);
     send_cmd(ST7735.CASET, &ca, 1);
     var ra: [4]u8 = undefined;
     std.mem.writeInt(u16, ra[0..2], 0, .big);
-    std.mem.writeInt(u16, ra[2..4], width - 1, .big);
+    std.mem.writeInt(u16, ra[2..4], height - 1, .big);
     send_cmd(ST7735.RASET, &ra, 1);
     send_cmd(ST7735.MADCTL, &.{@bitCast(ST7735.MADCTL_PARAM0{
         .MH = .LEFT_TO_RIGHT,
         .RGB = .RGB,
         .ML = .TOP_TO_BOTTOM,
-        .MV = false,
+        .MV = true,
         .MX = false,
         .MY = true,
     })}, 1);
