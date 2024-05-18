@@ -14,9 +14,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License.
  * You may obtain a copy of the Licence at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an AS IS BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,19 +28,30 @@
  */
 
 
+/*
 OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")
 OUTPUT_ARCH(arm)
 SEARCH_DIR(.)
+*/
+
+ENTRY(microzig_main)
 
 /* Memory Spaces Definitions */
 MEMORY
 {
-  rom      (rx)  : ORIGIN = 0x00000000, LENGTH = 16K
-  ram      (rwx) : ORIGIN = 0x20000000, LENGTH = 192K
+  rom      (rx)  : ORIGIN = 0x00004000, LENGTH = 0x00080000 - 0x4000
+  ram      (rwx) : ORIGIN = 0x20000000, LENGTH = 0x00030000
+  bkupram  (rwx) : ORIGIN = 0x47000000, LENGTH = 0x00002000
+  qspi     (rwx) : ORIGIN = 0x04000000, LENGTH = 0x01000000
 }
 
-/* The stack size used by the application. NOTE: you need to adjust according to your application. */
-STACK_SIZE = DEFINED(STACK_SIZE) ? STACK_SIZE : DEFINED(__stack_size__) ? __stack_size__ : 48K;
+PHDRS
+{
+  ph_rom   PT_LOAD FLAGS(0x5);
+  ph_ram   PT_LOAD FLAGS(0x7);
+  ph_bkupram   PT_LOAD FLAGS(0x7);
+  ph_qspi   PT_LOAD FLAGS(0x7);
+}
 
 /* Section Definitions */
 SECTIONS
@@ -48,7 +59,7 @@ SECTIONS
     .text :
     {
         . = ALIGN(4);
-        _sfixed = .;
+        KEEP(*(microzig_flash_start))
         KEEP(*(.vectors .vectors.*))
         *(.text .text.* .gnu.linkonce.t.*)
         *(.glue_7t) *(.glue_7)
@@ -76,8 +87,6 @@ SECTIONS
         KEEP (*(SORT(.ctors.*)))
         KEEP (*crtend.o(.ctors))
 
-        /*
-
         . = ALIGN(4);
         KEEP(*(.fini))
 
@@ -91,19 +100,20 @@ SECTIONS
         KEEP (*(EXCLUDE_FILE (*crtend.o) .dtors))
         KEEP (*(SORT(.dtors.*)))
         KEEP (*crtend.o(.dtors))
-        */
 
         . = ALIGN(4);
-        _efixed = .;            /* End of text section */
-    } > rom
+    } > rom : ph_rom
 
     /* .ARM.exidx is sorted, so has to go in its own output section.  */
     PROVIDE_HIDDEN (__exidx_start = .);
     .ARM.exidx :
     {
       *(.ARM.exidx* .gnu.linkonce.armexidx.*)
-    } > rom
+    } > rom : ph_rom
     PROVIDE_HIDDEN (__exidx_end = .);
+
+        microzig_data_start = .;
+        microzig_data_end = .;
 
     . = ALIGN(4);
     _etext = .;
@@ -111,41 +121,43 @@ SECTIONS
     .relocate : AT (_etext)
     {
         . = ALIGN(4);
-        _srelocate = .;
+        microzig_data_start = .;
         *(.ramfunc .ramfunc.*);
         *(.data .data.*);
         . = ALIGN(4);
-        _erelocate = .;
-    } > ram
+        microzig_data_end = .;
+    } > ram : ph_ram
 
-    /* .bss section which is used for uninitialized data */
+    .bkupram (NOLOAD):
+    {
+        . = ALIGN(8);
+        _sbkupram = .;
+        *(.bkupram .bkupram.*);
+        . = ALIGN(8);
+        _ebkupram = .;
+    } > bkupram : ph_bkupram
+
+    .qspi (NOLOAD):
+    {
+        . = ALIGN(8);
+        _sqspi = .;
+        *(.qspi .qspi.*);
+        . = ALIGN(8);
+        _eqspi = .;
+    } > qspi : ph_qspi
+
     .bss (NOLOAD) :
     {
         . = ALIGN(4);
-        _sbss = . ;
-        _szero = .;
+        microzig_bss_start = .;
         *(.bss .bss.*)
         *(COMMON)
         . = ALIGN(4);
-        _ebss = . ;
-        _ezero = .;
-    } > ram
-
-    /* stack section */
-    .stack (NOLOAD):
-    {
-        . = ALIGN(8);
-        _sstack = .;
-        . = . + STACK_SIZE;
-        . = ALIGN(8);
-        _estack = .;
-    } > ram
+        microzig_bss_end = .;
+    } > ram : ph_ram
 
     . = ALIGN(4);
     _end = . ;
 
-    _binfo_start = 16K - 4 * 4;
-    .binfo _binfo_start : {
-      KEEP(*(.binfo)) ;
-    } > rom
+  microzig_data_load_start = LOADADDR(.relocate);
 }

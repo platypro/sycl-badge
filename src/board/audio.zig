@@ -283,7 +283,7 @@ const channels: *volatile [4]Channel = &channels_storage;
 
 var sample_buffer_storage: [2][512]u16 = .{.{0} ** 512} ** 2;
 
-const board = @import("../board.zig");
+const board = @import("board.zig");
 const std = @import("std");
 const microzig = @import("microzig");
 const hal = microzig.hal;

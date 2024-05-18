@@ -254,7 +254,7 @@ const ST7735 = struct {
     const GMCTRN1 = 0xE1;
 };
 
-const board = @import("../board.zig");
+const board = @import("board.zig");
 const dma = @import("dma.zig");
 const microzig = @import("microzig");
 const hal = microzig.hal;

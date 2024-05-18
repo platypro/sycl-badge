@@ -12,13 +12,13 @@ fn sycl_badge_microzig_target(d: *Build.Dependency) MicroZig.Target {
         .preferred_format = .elf,
         .chip = atsamd51j19_chip_with_fpu,
         .hal = .{
-            .root_source_file = d.builder.path("src/hal.zig"),
+            .root_source_file = d.builder.path("src/hal/hal.zig"),
         },
         .board = .{
             .name = "SYCL Badge Rev A",
-            .root_source_file = d.builder.path("src/board.zig"),
+            .root_source_file = d.builder.path("src/board/board.zig"),
         },
-        .linker_script = d.builder.path("src/badge/samd51j19a_self.ld"),
+        .linker_script = d.builder.path("src/badge/samd51j19a.ld"),
     };
 }
 
@@ -29,11 +29,11 @@ pub fn build(b: *Build) void {
     const ws_dep = b.dependency("ws", .{});
     const mime_dep = b.dependency("mime", .{});
 
-    _ = b.addModule("cart-api", .{ .root_source_file = b.path("src/cart/api.zig") });
+    _ = b.addModule("cart-api", .{ .root_source_file = b.path("src/badge/cart-user.zig") });
 
     const watch = b.addExecutable(.{
         .name = "watch",
-        .root_source_file = b.path("src/watch/main.zig"),
+        .root_source_file = b.path("src/watch/watch.zig"),
         .target = b.host,
         .optimize = optimize,
     });
@@ -68,7 +68,7 @@ pub fn build(b: *Build) void {
         const mvp = mz.add_firmware(b, .{
             .name = std.fmt.comptimePrint("badge.demo.{s}", .{name}),
             .optimize = optimize,
-            .root_source_file = .{ .path = std.fmt.comptimePrint("src/badge/demos/{s}.zig", .{name}) },
+            .root_source_file = .{ .path = std.fmt.comptimePrint("demos/{s}.zig", .{name}) },
             .target = sycl_badge_microzig_target(&dep),
         });
         mz.install_firmware(b, mvp, .{ .format = .elf });
@@ -83,7 +83,7 @@ pub fn build(b: *Build) void {
         const mvp = add_cart(&dep, b, .{
             .name = std.fmt.comptimePrint("badge.demo.{s}", .{name}),
             .optimize = optimize,
-            .root_source_file = .{ .path = std.fmt.comptimePrint("src/badge/demos/{s}.zig", .{name}) },
+            .root_source_file = .{ .path = std.fmt.comptimePrint("demos/{s}.zig", .{name}) },
         });
         mvp.install(b);
     }
@@ -92,7 +92,7 @@ pub fn build(b: *Build) void {
     font_export_step.makeFn = struct {
         fn make(_: *std.Build.Step, _: *std.Progress.Node) anyerror!void {
             const font = @import("src/font.zig").font;
-            var file = try std.fs.cwd().createFile("simulator/src/font.ts", .{});
+            var file = try std.fs.cwd().createFile("src/simulator/src/font.ts", .{});
             try file.writer().writeAll("export const FONT = Uint8Array.of(\n");
             for (font) |char| {
                 try file.writer().writeAll("   ");
@@ -202,15 +202,15 @@ pub fn add_cart(
         .strip = false,
     });
     cart_lib.root_module.addImport("cart-api", d.module("cart-api"));
-    cart_lib.linker_script = d.builder.path("src/cart.ld");
+    cart_lib.linker_script = d.builder.path("src/badge/cart.ld");
 
     const mz = MicroZig.init(d.builder, .{});
     const fw = mz.add_firmware(d.builder, .{
         .name = options.name,
         .target = sycl_badge_microzig_target(d),
         .optimize = options.optimize,
-        .root_source_file = d.builder.path("src/badge.zig"),
-        .linker_script = d.builder.path("src/cart.ld"),
+        .root_source_file = d.builder.path("src/badge/badge.zig"),
+        .linker_script = d.builder.path("src/badge/cart.ld"),
     });
     fw.artifact.linkLibrary(cart_lib);
 

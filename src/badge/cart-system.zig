@@ -4,7 +4,7 @@ const board = microzig.board;
 const audio = board.audio;
 const lcd = board.lcd;
 const timer = microzig.hal.timer;
-pub const api = @import("../cart/api.zig");
+pub const api = @import("cart-user.zig");
 
 const libcart = struct {
     extern var cart_data_start: u8;

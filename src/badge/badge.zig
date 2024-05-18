@@ -31,7 +31,7 @@ const NVMCTRL = chip.peripherals.NVMCTRL;
 const TC4 = chip.peripherals.TC4;
 const MPU = chip.peripherals.MPU;
 
-const cart = @import("badge/cart.zig");
+const cart = @import("cart-system.zig");
 
 const led_pin = board.D13;
 

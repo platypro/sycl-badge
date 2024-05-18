@@ -12,10 +12,10 @@
 const hal = @import("microzig").hal;
 const port = hal.port;
 
-pub const NeopixelColor = @import("board/neopixel.zig").Color;
-pub const Neopixels = @import("board/neopixel.zig").Group(5);
-pub const lcd = @import("board/lcd.zig");
-pub const audio = @import("board/audio.zig");
+pub const NeopixelColor = @import("neopixel.zig").Color;
+pub const Neopixels = @import("neopixel.zig").Group(5);
+pub const lcd = @import("lcd.zig");
+pub const audio = @import("audio.zig");
 
 pub const TFT_RST = port.pin(.a, 0);
 pub const TFT_LITE = port.pin(.a, 1);
