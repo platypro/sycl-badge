@@ -102,7 +102,7 @@ pub const Cart = struct {
 
             const watch_compile = b.addExecutable(.{
                 .name = "watch",
-                .root_source_file = b.path("util/watch/watch.zig"),
+                .root_source_file = .{ .path = "util/watch/watch.zig" },
                 .target = b.host,
                 .optimize = optimize,
             });
@@ -133,7 +133,7 @@ pub const Cart = struct {
         if (resource_install == null) {
             const resource_compile = b.addExecutable(.{
                 .name = "rescompiler",
-                .root_source_file = b.path("util/rescompiler.zig"),
+                .root_source_file = .{ .path = "util/rescompiler.zig" },
                 .target = b.host,
                 .optimize = optimize,
                 .link_libc = true,
