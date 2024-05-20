@@ -24,16 +24,16 @@ pub const Channel = struct {
 pub fn init() void {
     @setCold(true);
 
-    board.A0_SPKR.set_dir(.out);
-    board.A7_VCC.set_dir(.in);
-    board.SPKR_EN.set_dir(.out);
-    board.SPKR_EN.write(.low);
+    board.pin_speaker.set_dir(.out);
+    board.pin_vcc_sensor.set_dir(.in);
+    board.pin_speaker_enable.set_dir(.out);
+    board.pin_speaker_enable.write(.low);
 
     clocks.gclk.set_peripheral_clk_gen(.GCLK_DAC, .GCLK3);
     DAC.CTRLA.write(.{ .SWRST = 1, .ENABLE = 0, .padding = 0 });
     while (DAC.SYNCBUSY.read().SWRST != 0) {}
-    board.A0_SPKR.set_mux(.B);
-    board.A7_VCC.set_mux(.B);
+    board.pin_speaker.set_mux(.B);
+    board.pin_vcc_sensor.set_mux(.B);
     DAC.CTRLB.write(.{ .DIFF = 0, .REFSEL = .{ .value = .VREFPU }, .padding = 0 });
     DAC.EVCTRL.write(.{
         .STARTEI0 = 1,
@@ -249,7 +249,7 @@ pub fn mix() callconv(.C) void {
         out_sample.* = @intCast((sample >> 16) - std.math.minInt(i16));
     }
     channels.* = local_channels;
-    board.SPKR_EN.write(speaker_enable);
+    board.pin_speaker_enable.write(speaker_enable);
     dma.ack_audio();
 }
 

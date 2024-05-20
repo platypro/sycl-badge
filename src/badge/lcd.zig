@@ -36,22 +36,22 @@ pub const white24: Color24 = .{ .r = 0xff, .g = 0xff, .b = 0xff };
 pub fn init(bpp: Bpp, fb: *const volatile FrameBuffer) void {
     @setCold(true);
 
-    board.TFT_RST.set_dir(.out);
-    board.TFT_LITE.set_dir(.out);
-    board.TFT_DC.set_dir(.out);
-    board.TFT_CS.set_dir(.out);
-    board.TFT_SCK.set_dir(.out);
-    board.TFT_MOSI.set_dir(.out);
+    board.pin_tft_reset.set_dir(.out);
+    board.pin_tft_lite.set_dir(.out);
+    board.pin_tft_dc.set_dir(.out);
+    board.pin_tft_cs.set_dir(.out);
+    board.pin_tft_sck.set_dir(.out);
+    board.pin_tft_mosi.set_dir(.out);
 
-    board.TFT_CS.write(.high);
-    board.TFT_DC.write(.high);
-    board.TFT_SCK.write(.high);
-    board.TFT_MOSI.write(.high);
+    board.pin_tft_cs.write(.high);
+    board.pin_tft_dc.write(.high);
+    board.pin_tft_sck.write(.high);
+    board.pin_tft_mosi.write(.high);
 
-    board.TFT_LITE.write(.high);
-    board.TFT_RST.write(.low);
+    board.pin_tft_lite.write(.high);
+    board.pin_tft_reset.write(.low);
     timer.delay_us(20 * std.time.ms_per_s);
-    board.TFT_RST.write(.high);
+    board.pin_tft_reset.write(.high);
     timer.delay_us(20 * std.time.ms_per_s);
 
     SERCOM4.SPIM.CTRLA.write(.{
@@ -73,8 +73,8 @@ pub fn init(bpp: Bpp, fb: *const volatile FrameBuffer) void {
         .padding = 0,
     });
     while (SERCOM4.SPIM.SYNCBUSY.read().SWRST != 0) {}
-    board.TFT_SCK.set_mux(.C);
-    board.TFT_MOSI.set_mux(.C);
+    board.pin_tft_sck.set_mux(.C);
+    board.pin_tft_mosi.set_mux(.C);
     SERCOM4.SPIM.BAUD.write(.{ .BAUD = 3 });
     SERCOM4.SPIM.CTRLA.write(.{
         .SWRST = 0,
@@ -131,27 +131,27 @@ pub fn init(bpp: Bpp, fb: *const volatile FrameBuffer) void {
     send_cmd(ST7735.DISPON, &.{}, 10 * std.time.us_per_ms);
     send_cmd(ST7735.RAMWR, &.{}, 1);
 
-    board.TFT_CS.write(.low);
+    board.pin_tft_cs.write(.low);
     timer.delay_us(1);
     dma.init_lcd(bpp, fb);
 }
 
 fn send_cmd(cmd: u8, params: []const u8, delay_us: u32) void {
     timer.delay_us(1);
-    board.TFT_CS.write(.low);
-    board.TFT_DC.write(.low);
+    board.pin_tft_cs.write(.low);
+    board.pin_tft_dc.write(.low);
     timer.delay_us(1);
     SERCOM4.SPIM.DATA.write(.{ .DATA = cmd });
     while (SERCOM4.SPIM.INTFLAG.read().TXC == 0) {}
     timer.delay_us(1);
-    board.TFT_DC.write(.high);
+    board.pin_tft_dc.write(.high);
     for (params) |param| {
         while (SERCOM4.SPIM.INTFLAG.read().DRE == 0) {}
         SERCOM4.SPIM.DATA.write(.{ .DATA = param });
     }
     while (SERCOM4.SPIM.INTFLAG.read().TXC == 0) {}
     timer.delay_us(1);
-    board.TFT_CS.write(.high);
+    board.pin_tft_cs.write(.high);
     timer.delay_us(delay_us);
 }
 
@@ -168,7 +168,7 @@ pub fn invert() void {
 
 fn start() void {
     send_cmd(ST7735.RAMWR, &.{}, 1);
-    board.TFT_CS.write(.low);
+    board.pin_tft_cs.write(.low);
     timer.delay_us(1);
     dma.start_lcd();
 }
@@ -176,7 +176,7 @@ fn start() void {
 fn stop() void {
     dma.stop_lcd();
     timer.delay_us(1);
-    board.TFT_CS.write(.high);
+    board.pin_tft_cs.write(.high);
     timer.delay_us(1);
 }
 

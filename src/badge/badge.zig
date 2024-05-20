@@ -33,11 +33,11 @@ const MPU = chip.peripherals.MPU;
 
 const cart = @import("cart-system.zig");
 
-const led_pin = board.A5_D13;
+const led_pin = board.pin_led;
 
 const lcd = board.lcd;
 const ButtonPoller = board.ButtonPoller;
-const light_sensor_pin = board.A6_LIGHT;
+const light_sensor_pin = board.pin_light_sensor;
 const audio = board.audio;
 
 const utils = @import("utils.zig");
@@ -224,7 +224,7 @@ pub fn main() !void {
     _ = freqs;
     lcd.init(.bpp16, @ptrCast(cart.api.framebuffer));
 
-    const neopixels = board.Neopixels.init(board.D8_NEOPIX);
+    const neopixels = board.Neopixels.init(board.pin_neopixel);
     adc.init();
     const poller = ButtonPoller.init();
     led_pin.set_dir(.out);

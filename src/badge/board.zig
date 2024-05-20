@@ -16,15 +16,34 @@ pub const Neopixels = @import("neopixel.zig").Group(5);
 pub const lcd = @import("lcd.zig");
 pub const audio = @import("audio.zig");
 
-pub const TFT_RST = port.pin(.a, 0);
-pub const TFT_LITE = port.pin(.a, 1);
-pub const A0_SPKR = port.pin(.a, 2);
-pub const A1_VCC = port.pin(.a, 3);
-pub const A4_VMEAS = port.pin(.a, 4);
-pub const A5_D13 = port.pin(.a, 5);
-pub const A6_LIGHT = port.pin(.a, 6);
-pub const A7_VCC = port.pin(.a, 7);
+// LCD display parameters
+// DC: Switch between data and command
+// LITE: Backlight
+// SCK/CS/MOSI: SPI port
+pub const pin_tft_reset = port.pin(.a, 0);
+pub const pin_tft_lite = port.pin(.a, 1);
+pub const pin_tft_dc = port.pin(.b, 12);
+pub const pin_tft_sck = port.pin(.b, 13);
+pub const pin_tft_cs = port.pin(.b, 14);
+pub const pin_tft_mosi = port.pin(.b, 15);
 
+// DAC output to speaker/Enable pin
+pub const pin_speaker = port.pin(.a, 2);
+pub const pin_speaker_enable = port.pin(.a, 23);
+
+// Red LED
+pub const pin_led = port.pin(.a, 5);
+
+// Light sensor ADC input
+pub const pin_light_sensor = port.pin(.a, 6);
+
+// Vcc voltage ADC input
+pub const pin_vcc_sensor = port.pin(.a, 7);
+
+// Battery level ADC input
+pub const pin_battery_sensor = port.pin(.a, 4);
+
+// 2Megabyte flash chip pins
 pub const qspi = [_]port.Pin{
     port.pin(.a, 8),
     port.pin(.a, 9),
@@ -34,17 +53,17 @@ pub const qspi = [_]port.Pin{
     port.pin(.b, 11),
 };
 
-pub const D8_NEOPIX = port.pin(.a, 15);
-pub const SPKR_EN = port.pin(.a, 23);
+// Neopixel input pin. This is used like a shift register.
+pub const pin_neopixel = port.pin(.a, 15);
+
+// USB differential pair
 pub const @"D-" = port.pin(.a, 24);
 pub const @"D+" = port.pin(.a, 25);
+
+// CMSIS Debug bus
 pub const SWO = port.pin(.a, 27);
 pub const SWCLK = port.pin(.a, 30);
 pub const SWDIO = port.pin(.a, 31);
-pub const TFT_DC = port.pin(.b, 12);
-pub const TFT_SCK = port.pin(.b, 13);
-pub const TFT_CS = port.pin(.b, 14);
-pub const TFT_MOSI = port.pin(.b, 15);
 
 pub const ButtonPoller = struct {
     pub const mask = port.mask(.b, 0x1FF);
