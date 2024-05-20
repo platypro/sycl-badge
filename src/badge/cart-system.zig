@@ -1,9 +1,9 @@
 const std = @import("std");
 const microzig = @import("microzig");
 const board = microzig.board;
-const audio = board.audio;
-const lcd = board.lcd;
-const timer = microzig.hal.timer;
+const audio = @import("audio.zig");
+const lcd = @import("lcd.zig");
+const timer = @import("timer.zig");
 pub const api = @import("cart-user.zig");
 
 const libcart = struct {
@@ -625,7 +625,6 @@ fn trace(
     str_ptr: [*]const User(u8),
     str_len: usize,
 ) callconv(.C) void {
-    const str = str_ptr[0..str_len];
-
-    _ = str;
+    _ = str_len;
+    _ = str_ptr;
 }

@@ -1,0 +1,8 @@
+{
+    "author_name": "Fabio Arnold",
+    "author_handle": "CaptainHorst",
+    "cart_title": "plasma",
+    "description": "Plasma effect - computes plasma blobs and cycles their hue",
+    "source_file": "plasma.zig",
+    "assets": {}
+}

@@ -1,0 +1,8 @@
+{
+    "author_name": "Fabio Arnold",
+    "author_handle": "fabioarnold",
+    "cart_title": "metalgear-timer",
+    "description": "A helpful kitchen timer in the style of Metal Gear Solid",
+    "source_file": "metalgear-timer.zig",
+    "assets": {}
+}

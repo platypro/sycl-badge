@@ -9,8 +9,7 @@
 //! - Red LED
 //! - Flash Memory
 //!
-const hal = @import("microzig").hal;
-const port = hal.port;
+const port = @import("port.zig");
 
 pub const NeopixelColor = @import("neopixel.zig").Color;
 pub const Neopixels = @import("neopixel.zig").Group(5);
@@ -19,11 +18,12 @@ pub const audio = @import("audio.zig");
 
 pub const TFT_RST = port.pin(.a, 0);
 pub const TFT_LITE = port.pin(.a, 1);
-pub const A0 = port.pin(.a, 2);
-pub const AVCC = port.pin(.a, 3);
-pub const A6_VMEAS = port.pin(.a, 4);
-pub const D13 = port.pin(.a, 5);
-pub const A7_LIGHT = port.pin(.a, 6);
+pub const A0_SPKR = port.pin(.a, 2);
+pub const A1_VCC = port.pin(.a, 3);
+pub const A4_VMEAS = port.pin(.a, 4);
+pub const A5_D13 = port.pin(.a, 5);
+pub const A6_LIGHT = port.pin(.a, 6);
+pub const A7_VCC = port.pin(.a, 7);
 
 pub const qspi = [_]port.Pin{
     port.pin(.a, 8),

@@ -1,6 +1,8 @@
 const microzig = @import("microzig");
 const std = @import("std");
 
+const port = @import("port.zig");
+
 const cart = @import("cart-api");
 pub const Color = extern struct {
     g: u8,
@@ -10,11 +12,11 @@ pub const Color = extern struct {
 
 pub fn Group(comptime count: u16) type {
     return struct {
-        pin: microzig.hal.port.Pin,
+        pin: port.Pin,
 
         const Self = @This();
 
-        pub fn init(pin: microzig.hal.port.Pin) Self {
+        pub fn init(pin: port.Pin) Self {
             pin.set_dir(.out);
 
             const ret = Self{ .pin = pin };

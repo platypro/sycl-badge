@@ -24,16 +24,16 @@ pub const Channel = struct {
 pub fn init() void {
     @setCold(true);
 
-    board.A0.set_dir(.out);
-    board.AVCC.set_dir(.in);
+    board.A0_SPKR.set_dir(.out);
+    board.A7_VCC.set_dir(.in);
     board.SPKR_EN.set_dir(.out);
     board.SPKR_EN.write(.low);
 
     clocks.gclk.set_peripheral_clk_gen(.GCLK_DAC, .GCLK3);
     DAC.CTRLA.write(.{ .SWRST = 1, .ENABLE = 0, .padding = 0 });
     while (DAC.SYNCBUSY.read().SWRST != 0) {}
-    board.A0.set_mux(.B);
-    board.AVCC.set_mux(.B);
+    board.A0_SPKR.set_mux(.B);
+    board.A7_VCC.set_mux(.B);
     DAC.CTRLB.write(.{ .DIFF = 0, .REFSEL = .{ .value = .VREFPU }, .padding = 0 });
     DAC.EVCTRL.write(.{
         .STARTEI0 = 1,
@@ -287,8 +287,8 @@ const board = @import("board.zig");
 const std = @import("std");
 const microzig = @import("microzig");
 const hal = microzig.hal;
-const port = hal.port;
-const clocks = hal.clocks;
+const port = @import("port.zig");
+const clocks = @import("clocks.zig");
 const chip = microzig.chip;
 const DAC = chip.peripherals.DAC;
 const TC5 = chip.peripherals.TC5;

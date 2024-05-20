@@ -16,13 +16,13 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 const microzig = @import("microzig");
-const board = microzig.board;
 const cpu = microzig.cpu;
 const chip = microzig.chip;
-const hal = microzig.hal;
-const clocks = hal.clocks;
-const timer = hal.timer;
-const sercom = hal.sercom;
+const board = @import("board.zig");
+const clocks = @import("clocks.zig");
+const timer = @import("timer.zig");
+const sercom = @import("sercom.zig");
+const adc = @import("adc.zig").num(0);
 
 // direct peripheral access
 const SystemControl = chip.peripherals.SystemControl;
@@ -33,14 +33,12 @@ const MPU = chip.peripherals.MPU;
 
 const cart = @import("cart-system.zig");
 
-const led_pin = board.D13;
+const led_pin = board.A5_D13;
 
 const lcd = board.lcd;
 const ButtonPoller = board.ButtonPoller;
-const light_sensor_pin = microzig.board.A7_LIGHT;
+const light_sensor_pin = board.A6_LIGHT;
 const audio = board.audio;
-
-const adc = hal.adc.num(0);
 
 const utils = @import("utils.zig");
 
@@ -224,7 +222,6 @@ pub fn main() !void {
     const state = clocks.get_state();
     const freqs = clocks.Frequencies.get(state);
     _ = freqs;
-
     lcd.init(.bpp16, @ptrCast(cart.api.framebuffer));
 
     const neopixels = board.Neopixels.init(board.D8_NEOPIX);

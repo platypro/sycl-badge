@@ -24,20 +24,20 @@ MEMORY
 SECTIONS
 {
   .text.cart : {
-    *libcart.a:*(.text*)
+    **lib*-cart.a:*(.text*)
     *libc.a:*(.text*)
     *libcompiler_rt.a:*(.text*)
     *(.text.cart)
   } >cart_flash
 
   .rodata.cart : {
-    *libcart.a:*(.rodata*)
+    **lib*-cart.a:*(.rodata*)
     *libc.a:*(.rodata*)
     *libcompiler_rt.a:*(.rodata*)
   } >cart_flash
 
   .ARM.exidx.cart : {
-    *libcart.a:*(.ARM.exidx* .gnu.linkonce.armexidx.*)
+    **lib*-cart.a:*(.ARM.exidx* .gnu.linkonce.armexidx.*)
     *libc.a:*(.ARM.exidx* .gnu.linkonce.armexidx.*)
     *libcompiler_rt.a:*(.ARM.exidx* .gnu.linkonce.armexidx.*)
   } >cart_flash
@@ -45,7 +45,7 @@ SECTIONS
   .data.cart : {
     cart_data_load_start = LOADADDR(.data.cart);
     cart_data_start = .;
-    *libcart.a:*(.data*)
+    **lib*-cart.a:*(.data*)
     *libc.a:*(.data*)
     *libcompiler_rt.a:*(.data*)
     cart_data_end = .;
@@ -53,7 +53,7 @@ SECTIONS
 
   .bss.cart (NOLOAD) : {
     cart_bss_start = .;
-    *libcart.a:*(.bss*)
+    *lib*-cart.a:*(.bss*)
     *libc.a:*(.bss*)
     *libcompiler_rt.a:*(.bss*)
     cart_bss_end = .;
