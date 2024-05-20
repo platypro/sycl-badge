@@ -4,14 +4,14 @@ const Build = std.Build;
 const MicroZig = @import("microzig/build");
 const atsam = @import("microzig/bsp/microchip/atsam");
 
-fn sycl_badge_microzig_target(b: *std.Build) MicroZig.Target {
+fn sycl_badge_microzig_target() MicroZig.Target {
     var atsamd51j19_chip_with_fpu = atsam.chips.atsamd51j19.chip;
     atsamd51j19_chip_with_fpu.cpu.target.cpu_features_add = std.Target.arm.featureSet(&.{.vfp4d16sp});
     atsamd51j19_chip_with_fpu.cpu.target.abi = .eabihf;
     return .{
         .preferred_format = .elf,
         .chip = atsamd51j19_chip_with_fpu,
-        .linker_script = b.path("src/badge/samd51j19a.ld"),
+        .linker_script = .{ .path = "src/badge/samd51j19a.ld" },
     };
 }
 
@@ -38,18 +38,18 @@ pub fn build(b: *Build) !void {
         );
     }
 
-    const font_export_step = b.step("generate-font.ts", "convert src/font.zig to simulator/src/font.ts");
+    const font_export_step = b.step("generate-font.ts", "convert src/badge/font.zig to simulator/src/font.ts");
     font_export_step.makeFn = struct {
         fn make(_: *std.Build.Step, _: *std.Progress.Node) anyerror!void {
-            const font = @import("src/font.zig").font;
+            const font = @embedFile("src/badge/font.dat");
             var file = try std.fs.cwd().createFile("src/simulator/src/font.ts", .{});
             try file.writer().writeAll("export const FONT = Uint8Array.of(\n");
-            for (font) |char| {
+            for (font, 0..) |char, i| {
                 try file.writer().writeAll("   ");
-                for (char) |byte| {
-                    try file.writer().print(" 0x{X:0>2},", .{byte});
+                try file.writer().print(" 0x{X:0>2},", .{char});
+                if (i % 8 == 7) {
+                    try file.writer().writeByte('\n');
                 }
-                try file.writer().writeByte('\n');
             }
             try file.writer().writeAll(");\n");
             file.close();
@@ -151,9 +151,10 @@ pub const Cart = struct {
         const resource_exe = find_resource_exe(b, options.optimize);
 
         // Read json file
-        const config_file_location = b.path(options.manifest);
-        var file = try std.fs.openFileAbsolute(config_file_location.getPath(b), .{});
+        const config_file_location = options.manifest;
+        var file = try std.fs.openFileAbsolute(b.pathFromRoot(config_file_location), .{});
         defer file.close();
+
         const fileContents = try file.readToEndAlloc(b.allocator, 65536);
         defer b.allocator.free(fileContents);
 
@@ -180,7 +181,7 @@ pub const Cart = struct {
 
         // If not build it
         if (cart_module == null) {
-            cart_module = b.addModule("cart-api", .{ .root_source_file = b.path("src/badge/cart-user.zig") });
+            cart_module = b.addModule("cart-api", .{ .root_source_file = .{ .path = "src/badge/cart-user.zig" } });
         }
 
         // Build wasm (Runs on PC for the Emulator)
@@ -208,7 +209,7 @@ pub const Cart = struct {
 
         // Build cart
         const sycl_badge_target =
-            b.resolveTargetQuery(sycl_badge_microzig_target(b).chip.cpu.target);
+            b.resolveTargetQuery(sycl_badge_microzig_target().chip.cpu.target);
 
         const cart_lib_name = try std.fmt.allocPrint(
             b.allocator,
@@ -228,14 +229,14 @@ pub const Cart = struct {
             .strip = false,
         });
         cart_lib.root_module.addImport("cart-api", cart_module.?);
-        cart_lib.linker_script = b.path("src/badge/cart.ld");
+        cart_lib.linker_script = std.Build.LazyPath{ .path = "src/badge/cart.ld" };
 
         const fw = options.micro_zig.add_firmware(b, .{
             .name = manifest.value.cart_title,
-            .target = sycl_badge_microzig_target(b),
+            .target = sycl_badge_microzig_target(),
             .optimize = options.optimize,
-            .root_source_file = b.path("src/badge/badge.zig"),
-            .linker_script = b.path("src/badge/cart.ld"),
+            .root_source_file = .{ .path = "src/badge/badge.zig" },
+            .linker_script = .{ .path = "src/badge/cart.ld" },
         });
         fw.artifact.linkLibrary(cart_lib);
 

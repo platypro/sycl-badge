@@ -433,7 +433,7 @@ fn rect(
     }
 }
 
-const font = @import("font.zig").font;
+const font = @embedFile("font.dat");
 
 fn text(
     str_ptr: [*]const User(u8),
@@ -468,7 +468,7 @@ fn text(
                 for (0..8) |x_offset| {
                     const dst_x = char_x_offset + @as(i32, @intCast(x_offset));
 
-                    const color = colors[std.mem.readPackedIntNative(u1, &font, base + y_offset * 8 + (7 - x_offset))];
+                    const color = colors[std.mem.readPackedIntNative(u1, font, base + y_offset * 8 + (7 - x_offset))];
                     if (color.unwrap()) |dc| {
                         // TODO: this is slow; check bounds once instead
                         pointUnclipped(dst_x, dst_y, dc);
