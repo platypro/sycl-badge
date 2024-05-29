@@ -1,4 +1,4 @@
-pub fn init_lcd(bpp: lcd.Bpp, fb: *const volatile lcd.FrameBuffer) void {
+pub fn init_lcd() void {
     @setCold(true);
 
     init();
@@ -32,6 +32,19 @@ pub fn init_lcd(bpp: lcd.Bpp, fb: *const volatile lcd.FrameBuffer) void {
         .padding = 0,
     });
     while (DMAC.CHANNEL[CHANNEL.LCD].CHCTRLA.read().SWRST != 0) {}
+
+    DMAC.CHANNEL[CHANNEL.LCD].CHINTENSET.write(.{
+        .TERR = 0,
+        .TCMPL = 1,
+        .SUSP = 0,
+        .padding = 0,
+    });
+
+    microzig.chip.peripherals.EVSYS
+        .ack_lcd();
+}
+
+pub fn write_to_lcd(buf: []u8) void {
     desc[DESC.LCD].BTCTRL.write(.{
         .VALID = 1,
         .EVOSEL = .{ .value = .DISABLE },
@@ -43,15 +56,12 @@ pub fn init_lcd(bpp: lcd.Bpp, fb: *const volatile lcd.FrameBuffer) void {
         .STEPSEL = .{ .value = .SRC },
         .STEPSIZE = .{ .value = .X1 },
     });
-    switch (bpp) {
-        inline else => |tag| {
-            const len = @sizeOf(std.meta.FieldType(lcd.FrameBuffer, tag));
-            desc[DESC.LCD].BTCNT.write(.{ .BTCNT = @divExact(len, 1) });
-            desc[DESC.LCD].SRCADDR.write(.{ .SRCADDR = @intFromPtr(&@field(fb, @tagName(tag))) + len });
-        },
-    }
+
+    desc[DESC.LCD].BTCNT.write(.{ .BTCNT = @intCast(buf.len) });
+    desc[DESC.LCD].SRCADDR.write(.{ .SRCADDR = @intFromPtr(buf.ptr) });
     desc[DESC.LCD].DSTADDR.write(.{ .CHKINIT = @intFromPtr(&SERCOM4.SPIM.DATA) });
     desc[DESC.LCD].DESCADDR.write(.{ .DESCADDR = @intFromPtr(&desc[DESC.LCD]) });
+
     microzig.cpu.dmb();
     DMAC.CHANNEL[CHANNEL.LCD].CHCTRLA.write(.{
         .SWRST = 0,
@@ -67,31 +77,18 @@ pub fn init_lcd(bpp: lcd.Bpp, fb: *const volatile lcd.FrameBuffer) void {
         .THRESHOLD = .{ .value = .@"1BEAT" },
         .padding = 0,
     });
-}
-
-pub fn start_lcd() void {
-    DMAC.CHANNEL[CHANNEL.LCD].CHCTRLA.modify(.{ .ENABLE = 1 });
     while (DMAC.CHANNEL[CHANNEL.LCD].CHCTRLA.read().ENABLE != 1) {}
 }
 
-pub fn stop_lcd() void {
-    DMAC.CHANNEL[CHANNEL.LCD].CHCTRLA.modify(.{ .ENABLE = 0 });
-    while (DMAC.CHANNEL[CHANNEL.LCD].CHCTRLA.read().ENABLE != 0) {}
+pub fn lcd_poll_done() bool {
+    return DMAC.CHANNEL[CHANNEL.LCD].CHINTFLAG.read().TCMPL == 0;
 }
 
-pub fn poll_ack_lcd() void {
-    while (DMAC.CHANNEL[CHANNEL.LCD].CHINTFLAG.read().TCMPL == 0) {}
+pub fn ack_lcd() void {
     DMAC.CHANNEL[CHANNEL.LCD].CHINTFLAG.write(.{
         .TERR = 0,
         .TCMPL = 1,
         .SUSP = 0,
-        .padding = 0,
-    });
-}
-
-pub fn resume_lcd() void {
-    DMAC.CHANNEL[CHANNEL.LCD].CHCTRLB.write(.{
-        .CMD = .{ .value = .RESUME },
         .padding = 0,
     });
 }

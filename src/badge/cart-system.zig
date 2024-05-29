@@ -4,179 +4,19 @@ const board = microzig.board;
 const audio = @import("audio.zig");
 const lcd = @import("lcd.zig");
 const timer = @import("timer.zig");
+const dma = @import("dma.zig");
 pub const api = @import("cart-user.zig");
 
-const libcart = struct {
-    extern var cart_data_start: u8;
-    extern var cart_data_end: u8;
-    extern var cart_bss_start: u8;
-    extern var cart_bss_end: u8;
-    extern const cart_data_load_start: u8;
+pub const libcart = struct {
+    pub extern var cart_data_start: u8;
+    pub extern var cart_data_end: u8;
+    pub extern var cart_bss_start: u8;
+    pub extern var cart_bss_end: u8;
+    pub extern const cart_data_load_start: u8;
 
-    extern fn start() void;
-    extern fn update() void;
-    export fn __return_thunk__() linksection(".text.cart") noreturn {
-        asm volatile (" svc #11");
-        unreachable;
-    }
+    pub extern fn start() void;
+    pub extern fn update() void;
 };
-
-pub fn svcall_handler() callconv(.Naked) void {
-    asm volatile (
-        \\ mvns r0, lr, lsl #31 - 2
-        \\ bcc 12f
-        \\ ite mi
-        \\ movmi r1, sp
-        \\ mrspl r1, psp
-        \\ ldr r2, [r1, #6 * 4]
-        \\ subs r2, #2
-        \\ ldrb r3, [r2, #1 * 1]
-        \\ cmp r3, #0xDF
-        \\ bne 12f
-        \\ ldrb r3, [r2, #0 * 1]
-        \\ cmp r3, #11
-        \\ bhi 12f
-        \\ tbb [pc, r3]
-        \\0:
-        \\ .byte (0f - 0b) / 2
-        \\ .byte (1f - 0b) / 2
-        \\ .byte (2f - 0b) / 2
-        \\ .byte (3f - 0b) / 2
-        \\ .byte (4f - 0b) / 2
-        \\ .byte (5f - 0b) / 2
-        \\ .byte (6f - 0b) / 2
-        \\ .byte (7f - 0b) / 2
-        \\ .byte (8f - 0b) / 2
-        \\ .byte (9f - 0b) / 2
-        \\ .byte (10f - 0b) / 2
-        \\12:
-        \\ .byte (11f - 0b) / 2
-        \\ .byte 0xDE
-        \\ .align 1
-        \\0:
-        \\ ldm r1, {r0-r3}
-        \\ b %[blit:P]
-        \\1:
-        \\ ldm r1, {r0-r3}
-        \\ b %[line:P]
-        \\2:
-        \\ ldm r1, {r0-r3}
-        \\ b %[oval:P]
-        \\3:
-        \\ ldm r1, {r0-r3}
-        \\ b %[rect:P]
-        \\4:
-        \\ ldm r1, {r0-r3}
-        \\ b %[text:P]
-        \\5:
-        \\ ldm r1, {r0-r3}
-        \\ b %[hline:P]
-        \\6:
-        \\ ldm r1, {r0-r3}
-        \\ b %[vline:P]
-        \\7:
-        \\ ldm r1, {r0-r3}
-        \\ b %[tone:P]
-        \\8:
-        \\ ldm r1, {r0-r2}
-        \\ b %[read_flash:P]
-        \\9:
-        \\ ldm r1, {r0-r1}
-        \\ b %[write_flash_page:P]
-        \\10:
-        \\ ldm r1, {r0-r1}
-        \\ b %[trace:P]
-        \\11:
-        \\ lsrs r0, #31
-        \\ msr control, r0
-        \\ it eq
-        \\ popeq {r3, r5-r11, pc}
-        \\ subs r0, #1 - 0xFFFFFFFD
-        \\ push {r4-r11, lr}
-        \\ movs r4, #0
-        \\ movs r5, #0
-        \\ movs r6, #0
-        \\ movs r7, #0
-        \\ mov r8, r4
-        \\ mov r9, r5
-        \\ mov r10, r6
-        \\ mov r11, r7
-        \\ bx r0
-        :
-        : [blit] "X" (&blit),
-          [line] "X" (&line),
-          [oval] "X" (&oval),
-          [rect] "X" (&rect),
-          [text] "X" (&text),
-          [hline] "X" (&hline),
-          [vline] "X" (&vline),
-          [tone] "X" (&tone),
-          [read_flash] "X" (&read_flash),
-          [write_flash_page] "X" (&write_flash_page),
-          [trace] "X" (&trace),
-    );
-}
-pub const HSRAM = struct {
-    pub const SIZE: usize = 0x00030000; // 192 kB
-    pub const ADDR: *align(SIZE / 3) volatile [SIZE]u8 = @ptrFromInt(0x20000000);
-};
-
-pub fn start() void {
-    @memset(@as(*[0xA01E]u8, @ptrFromInt(0x20000000)), 0);
-    api.neopixels.* = .{
-        .{ .r = 0, .g = 0, .b = 0 },
-        .{ .r = 0, .g = 0, .b = 0 },
-        .{ .r = 0, .g = 0, .b = 0 },
-        .{ .r = 0, .g = 0, .b = 0 },
-        .{ .r = 0, .g = 0, .b = 0 },
-    };
-
-    // fill .bss with zeroes
-    {
-        const bss_start: [*]u8 = @ptrCast(&libcart.cart_bss_start);
-        const bss_end: [*]u8 = @ptrCast(&libcart.cart_bss_end);
-        const bss_len = @intFromPtr(bss_end) - @intFromPtr(bss_start);
-
-        @memset(bss_start[0..bss_len], 0);
-    }
-
-    // load .data from flash
-    {
-        const data_start: [*]u8 = @ptrCast(&libcart.cart_data_start);
-        const data_end: [*]u8 = @ptrCast(&libcart.cart_data_end);
-        const data_len = @intFromPtr(data_end) - @intFromPtr(data_start);
-        const data_src: [*]const u8 = @ptrCast(&libcart.cart_data_load_start);
-
-        @memcpy(data_start[0..data_len], data_src[0..data_len]);
-    }
-
-    call(&libcart.start);
-}
-pub fn tick() void {
-    // non-rendering logic could go here
-    lcd.vsync();
-    call(&libcart.update);
-    lcd.update();
-}
-
-fn call(func: *const fn () callconv(.C) void) void {
-    const process_stack = HSRAM.ADDR[HSRAM.SIZE - @divExact(
-        HSRAM.SIZE,
-        3 * 2,
-    ) ..][0..@divExact(HSRAM.SIZE, 3 * 4)];
-    const frame = comptime std.mem.bytesAsSlice(u32, process_stack[process_stack.len - 0x20 ..]);
-    @memset(frame[0..5], 0);
-    frame[5] = @intFromPtr(&libcart.__return_thunk__);
-    frame[6] = @intFromPtr(func);
-    frame[7] = 1 << 24;
-    asm volatile (
-        \\ msr psp, %[process_stack]
-        \\ svc #11
-        :
-        : [process_stack] "r" (frame.ptr),
-        : "memory"
-    );
-}
 
 fn User(comptime T: type) type {
     return extern struct {
@@ -205,6 +45,41 @@ fn User(comptime T: type) type {
             );
         }
     };
+}
+
+pub fn handle_svcall(svid: u32, args: [*]u32) callconv(.C) void {
+    switch (svid) {
+        1 => disp_set_pixel(args[0], args[1]),
+        2 => disp_clear(args[0]),
+        3 => disp_set_window(args[0], args[1]),
+        4 => disp_write(@ptrFromInt(args[0]), args[1]),
+        5 => args[0] = disp_poll_busy(),
+        else => {},
+    }
+}
+
+fn disp_set_pixel(xy: u32, color: u32) callconv(.C) void {
+    lcd.set_pixel(xy, @truncate(color));
+}
+
+fn disp_clear(color: u32) callconv(.C) void {
+    lcd.clear(@truncate(color));
+}
+
+fn disp_set_window(x1x2: u32, y1y2: u32) callconv(.C) void {
+    lcd.set_window(x1x2, y1y2);
+}
+
+fn disp_write(buf: *anyopaque, len: u32) callconv(.C) void {
+    lcd.write(@as([*]u8, @ptrCast(buf))[0..len]);
+}
+
+fn disp_poll_busy() callconv(.C) u32 {
+    if (dma.lcd_poll_done()) {
+        return 0;
+    } else {
+        return 1;
+    }
 }
 
 fn point(x: usize, y: usize, color: api.DisplayColor) void {

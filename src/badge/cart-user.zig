@@ -74,7 +74,7 @@ pub const Controls = packed struct(u9) {
     right: bool,
 };
 
-const base = if (builtin.target.isWasm()) 0 else 0x20000000;
+const base = if (builtin.target.isWasm()) 0 else 0x20020000;
 
 pub const controls: *Controls = @ptrFromInt(base + 0x04);
 pub const light_level: *u12 = @ptrFromInt(base + 0x06);

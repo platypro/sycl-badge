@@ -44,19 +44,92 @@ const utils = @import("utils.zig");
 
 pub const microzig_options = .{
     .interrupts = .{
-        .SVCall = microzig.interrupt.Handler{ .Naked = cart.svcall_handler },
+        .SVCall = microzig.interrupt.Handler{ .Naked = svcall_handler },
+        .PendSV = microzig.interrupt.Handler{ .Naked = svcall_handler },
+        .DMAC_DMAC_0 = .{ .C = &lcd.onDone },
         .DMAC_DMAC_1 = .{ .C = &audio.mix },
     },
 };
 
+pub const CARTRAM = struct {
+    pub const SIZE: usize = 16; // 2^17 = 128kb
+    pub const ADDR: usize = 0x20000000;
+};
+
+pub const RUNTIMERAM = struct {
+    pub const SIZE: usize = 15; // s^16 = 64kb
+    pub const ADDR: usize = 0x20020000;
+};
+
+pub const FLASH = struct {
+    pub const SIZE: usize = 18; // 2^19 = 512 kB
+    pub const PAGE_SIZE = 512;
+    pub const NB_OF_PAGES = 1024;
+    pub const USER_PAGE_SIZE = 512;
+    pub const ADDR: usize = 0x00000000;
+};
+
+pub fn svcall_handler() callconv(.Naked) noreturn {
+    asm volatile (
+    // Grab the svc #
+        \\ MRS     R0,PSP
+        \\ LDR     R0,[R0,#24]
+        \\ LDRH    R0,[R0,#-2]
+        \\ BICS    R0,R0,#0xFF00
+        // Skip exit handler if svc not #0
+        \\ CMP R0,#0
+        \\ BNE handle_svc
+        // Also skip exit handler if not called from badge.zig (todo)
+        // Switch to main stack and privilidged mode
+        \\ mrs r0, control
+        \\ bic r0, r0, #0b01
+        \\ msr control, r0
+        \\ isb
+        \\ bx lr
+        \\handle_svc:
+        \\ PUSH {LR}
+        \\ mrs R1, PSP
+        \\ bl %[handle_svcall:P]
+        \\ POP {LR}
+        \\ bx LR
+        :
+        : [handle_svcall] "X" (&cart.handle_svcall),
+        : "r0", "r1"
+    );
+}
+
+fn call_cart(fcn: *const fn () callconv(.C) void) void {
+    asm volatile (
+        \\ mrs r1, control
+        \\ orr r1, r1, #0b11
+        \\ msr control, r1
+        \\ isb
+        ::: "r1");
+    fcn();
+
+    asm volatile (
+        \\ svc #0
+        \\ mrs r1, control
+        \\ bic r1, r1, #0b11
+        \\ msr control, r1
+        \\ isb
+        ::: "r1");
+}
+
 pub fn main() !void {
     // Enable safety traps
     SystemControl.CCR.modify(.{
-        .NONBASETHRDENA = 0,
-        .USERSETMPEND = 0,
-        .UNALIGN_TRP = .{ .value = .VALUE_0 }, // TODO
+        // Allows An exception to be thrown from the svcall handler to return to either os/app code
+        .NONBASETHRDENA = 1,
+        // Unprivelidged code can trigger a SWI manually
+        .USERSETMPEND = 1,
+        // Unaligned word or halfword access does NOT cause a lockup
+        .UNALIGN_TRP = .{ .value = .VALUE_0 },
+        // Divide by zero causes a lock up
         .DIV_0_TRP = 1,
-        .BFHFNMIGN = 0,
+        // Precice data acess fault does NOT cause a lockup
+        .BFHFNMIGN = 1,
+        // Stack is aligned to 8-byte boundaries
         .STKALIGN = .{ .value = .VALUE_1 },
     });
     // Enable FPU access.
@@ -80,72 +153,12 @@ pub fn main() !void {
     clocks.gclk.reset_blocking();
     microzig.cpu.dmb();
 
-    MPU.RBAR.write(.{
-        .REGION = 0,
-        .VALID = 1,
-        .ADDR = @intFromPtr(utils.FLASH.ADDR) >> 5,
-    });
-    MPU.RASR.write(.{
-        .ENABLE = 1,
-        .SIZE = (@ctz(utils.FLASH.SIZE) - 1) & 1,
-        .reserved8 = @as(u4, (@ctz(utils.FLASH.SIZE) - 1) >> 1),
-        .SRD = 0b00000111,
-        .B = 0,
-        .C = 1,
-        .S = 0,
-        .TEX = 0b000,
-        .reserved24 = 0,
-        .AP = 0b010,
-        .reserved28 = 0,
-        .XN = 0,
-        .padding = 0,
-    });
-    MPU.RBAR_A1.write(.{
-        .REGION = 1,
-        .VALID = 1,
-        .ADDR = @intFromPtr(utils.HSRAM.ADDR) >> 5,
-    });
-    MPU.RASR_A1.write(.{
-        .ENABLE = 1,
-        .SIZE = (@ctz(@divExact(utils.HSRAM.SIZE, 3) * 2) - 1) & 1,
-        .reserved8 = @as(u4, (@ctz(@divExact(utils.HSRAM.SIZE, 3) * 2) - 1) >> 1),
-        .SRD = 0b00000000,
-        .B = 1,
-        .C = 1,
-        .S = 0,
-        .TEX = 0b001,
-        .reserved24 = 0,
-        .AP = 0b011,
-        .reserved28 = 0,
-        .XN = 1,
-        .padding = 0,
-    });
-    MPU.RBAR_A2.write(.{
-        .REGION = 2,
-        .VALID = 1,
-        .ADDR = @intFromPtr(utils.HSRAM.ADDR[@divExact(utils.HSRAM.SIZE, 3) * 2 ..]) >> 5,
-    });
-    MPU.RASR_A2.write(.{
-        .ENABLE = 1,
-        .SIZE = (@ctz(@divExact(utils.HSRAM.SIZE, 3)) - 1) & 1,
-        .reserved8 = @as(u4, (@ctz(@divExact(utils.HSRAM.SIZE, 3)) - 1) >> 1),
-        .SRD = 0b11001111,
-        .B = 1,
-        .C = 1,
-        .S = 0,
-        .TEX = 0b001,
-        .reserved24 = 0,
-        .AP = 0b011,
-        .reserved28 = 0,
-        .XN = 1,
-        .padding = 0,
-    });
-    MPU.CTRL.write(.{
-        .ENABLE = 1,
-        .HFNMIENA = 0,
-        .PRIVDEFENA = 1,
-        .padding = 0,
-    });
+    // Set up Process Stack Pointer
+    asm volatile (
+        \\ MOV  r0, #0xFFFF
+        \\ MOVT r0, #0x2001
+        \\ MSR psp, r0
+        ::: "r0");
 
     // GCLK0 feeds the CPU so put it on OSCULP32K for now
     clocks.gclk.enable_generator(.GCLK0, .OSCULP32K, .{});
@@ -222,14 +235,44 @@ pub fn main() !void {
     const state = clocks.get_state();
     const freqs = clocks.Frequencies.get(state);
     _ = freqs;
-    lcd.init(.bpp16, @ptrCast(cart.api.framebuffer));
+    lcd.init();
 
     const neopixels = board.Neopixels.init(board.pin_neopixel);
     adc.init();
     const poller = ButtonPoller.init();
     led_pin.set_dir(.out);
 
-    cart.start();
+    @memset(@as(*[0xA01E]u8, @ptrFromInt(0x20020000)), 0);
+    cart.api.neopixels.* = .{
+        .{ .r = 0, .g = 0, .b = 0 },
+        .{ .r = 0, .g = 0, .b = 0 },
+        .{ .r = 0, .g = 0, .b = 0 },
+        .{ .r = 0, .g = 0, .b = 0 },
+        .{ .r = 0, .g = 0, .b = 0 },
+    };
+
+    // fill .bss with zeroes
+    {
+        const bss_start: [*]u8 = @ptrCast(&cart.libcart.cart_bss_start);
+        const bss_end: [*]u8 = @ptrCast(&cart.libcart.cart_bss_end);
+        const bss_len = @intFromPtr(bss_end) - @intFromPtr(bss_start);
+
+        @memset(bss_start[0..bss_len], 0);
+    }
+
+    // load .data from flash
+    {
+        const data_start: [*]u8 = @ptrCast(&cart.libcart.cart_data_start);
+        const data_end: [*]u8 = @ptrCast(&cart.libcart.cart_data_end);
+        const data_len = @intFromPtr(data_end) - @intFromPtr(data_start);
+        const data_src: [*]const u8 = @ptrCast(&cart.libcart.cart_data_load_start);
+
+        @memcpy(data_start[0..data_len], data_src[0..data_len]);
+    }
+
+    // Call start() on cart
+    call_cart(&cart.libcart.start);
+
     while (true) {
         const light_reading = adc.single_shot_blocking(.AIN6);
         cart.api.light_level.* = @intCast(light_reading);
@@ -247,7 +290,7 @@ pub fn main() !void {
             .right = buttons.right == 1,
         };
 
-        cart.tick();
+        call_cart(&cart.libcart.update);
         var pixels: [5]board.NeopixelColor = undefined;
         for (&pixels, cart.api.neopixels) |*local, pixel|
             local.* = .{

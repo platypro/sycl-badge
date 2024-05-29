@@ -5,38 +5,27 @@ const MicroZig = @import("microzig/build");
 const atsam = @import("microzig/bsp/microchip/atsam");
 
 fn sycl_badge_microzig_target() MicroZig.Target {
-    var atsamd51j19_chip_with_fpu = atsam.chips.atsamd51j19.chip;
-    atsamd51j19_chip_with_fpu.cpu.target.cpu_features_add = std.Target.arm.featureSet(&.{.vfp4d16sp});
-    atsamd51j19_chip_with_fpu.cpu.target.abi = .eabihf;
+    var atsamd51g18a_chip_with_fpu = atsam.chips.atsamd51j19.chip;
+    atsamd51g18a_chip_with_fpu.cpu.target.cpu_features_add = std.Target.arm.featureSet(&.{.vfp4d16sp});
+    atsamd51g18a_chip_with_fpu.cpu.target.abi = .eabihf;
     return .{
         .preferred_format = .elf,
-        .chip = atsamd51j19_chip_with_fpu,
-        .linker_script = .{ .path = "src/badge/samd51j19a.ld" },
+        .chip = atsamd51g18a_chip_with_fpu,
+        .linker_script = .{ .path = "src/badge/samd51g18a.ld" },
     };
 }
-
-const carts = .{
-    "carts/feature-test/feature-test.json",
-    "carts/blobs/blobs.json",
-    "carts/plasma/plasma.json",
-    "carts/zeroman/zeroman.json",
-    "carts/metalgear-timer/metalgear-timer.json",
-};
 
 pub fn build(b: *Build) !void {
     const mz = MicroZig.init(b, .{});
     const optimize = b.standardOptimizeOption(.{});
-
-    inline for (carts) |cart| {
-        _ = try Cart.create(
-            b,
-            .{
-                .optimize = optimize,
-                .manifest = cart,
-                .micro_zig = mz,
-            },
-        );
-    }
+    _ = try Cart.create(
+        b,
+        .{
+            .optimize = optimize,
+            .manifest = "carts/platy-test/platy-test.json",
+            .micro_zig = mz,
+        },
+    );
 
     const font_export_step = b.step("generate-font.ts", "convert src/badge/font.zig to simulator/src/font.ts");
     font_export_step.makeFn = struct {
@@ -64,6 +53,7 @@ pub const Cart = struct {
 
     options: CreateOptions,
     manifest: Manifest,
+    firmware_file: []const u8,
 
     pub const CreateOptions = struct {
         optimize: std.builtin.OptimizeMode,
@@ -177,11 +167,11 @@ pub const Cart = struct {
         defer b.allocator.free(cart_source_file);
 
         // Check if cart-api module has been built
-        var cart_module = b.modules.get("cart-api");
+        var cart_module = b.modules.get("sdk");
 
         // If not build it
         if (cart_module == null) {
-            cart_module = b.addModule("cart-api", .{ .root_source_file = .{ .path = "src/badge/cart-user.zig" } });
+            cart_module = b.addModule("sdk", .{ .root_source_file = .{ .path = "src/api/api.zig" } });
         }
 
         // Build wasm (Runs on PC for the Emulator)
@@ -205,7 +195,7 @@ pub const Cart = struct {
         wasm.global_base = 160 * 128 * 2 + 0x1e;
 
         wasm.rdynamic = true;
-        wasm.root_module.addImport("cart-api", cart_module.?);
+        wasm.root_module.addImport("sdk", cart_module.?);
 
         // Build cart
         const sycl_badge_target =
@@ -228,7 +218,7 @@ pub const Cart = struct {
             .use_lld = true,
             .strip = false,
         });
-        cart_lib.root_module.addImport("cart-api", cart_module.?);
+        cart_lib.root_module.addImport("sdk", cart_module.?);
         cart_lib.linker_script = std.Build.LazyPath{ .path = "src/badge/cart.ld" };
 
         const fw = options.micro_zig.add_firmware(b, .{
@@ -240,6 +230,9 @@ pub const Cart = struct {
         });
         fw.artifact.linkLibrary(cart_lib);
 
+        const firmware_path = try std.fmt.allocPrint(b.allocator, "{s}.elf", .{manifest.value.cart_title});
+        defer b.allocator.free(firmware_path);
+
         // Create cart object
         const result: *Cart = b.allocator.create(Cart) catch @panic("OOM");
         result.* = .{
@@ -248,13 +241,13 @@ pub const Cart = struct {
             .cart_lib = cart_lib,
             .options = options,
             .manifest = manifest.value,
+            .firmware_file = b.getInstallPath(.{ .custom = "firmware" }, firmware_path),
         };
 
         // Install cart
         const install_artifact_step = b.addInstallArtifact(result.*.wasm, .{});
         b.getInstallStep().dependOn(&install_artifact_step.step);
         result.*.options.micro_zig.install_firmware(b, result.*.fw, .{ .format = .elf });
-        result.*.options.micro_zig.install_firmware(b, result.*.fw, .{ .format = .{ .uf2 = .SAMD51 } });
         b.installArtifact(result.*.wasm);
 
         // Compile resources (if applicable)

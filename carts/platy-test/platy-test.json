@@ -1,0 +1,8 @@
+{
+    "author_name": "Aeden McClain",
+    "author_handle": "platypro",
+    "cart_title": "platy-test",
+    "description": "Feature test cart for platypro's branch",
+    "source_file": "platy-test.zig",
+    "assets": {}
+}

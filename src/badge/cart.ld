@@ -9,14 +9,12 @@ ENTRY(microzig_main);
 
 MEMORY
 {
-  bootloader    (rx!w) : ORIGIN = 0x00000000, LENGTH = 0x00004000
-  runtime_flash (rx!w) : ORIGIN = 0x00004000, LENGTH = 0x0002C000
+  runtime_flash (rx!w) : ORIGIN = 0x00000000, LENGTH = 0x0002C000
   cart_flash    (rx!w) : ORIGIN = 0x00030000, LENGTH = 0x00080000
-  cart_fixed    (rw!x) : ORIGIN = 0x20000000, LENGTH = 0x0000A01E
-  cart_ram      (rw!x) : ORIGIN = 0x2000A01E, LENGTH = 0x00015FE2
-  runtime_ram   (rw!x) : ORIGIN = 0x20020000, LENGTH = 0x00008000
-  cart_stack    (rw!x) : ORIGIN = 0x20028000, LENGTH = 0x00004000
-  runtime_stack (rw!x) : ORIGIN = 0x2002C000, LENGTH = 0x00004000
+  cart_ram      (rw!x) : ORIGIN = 0x20000000, LENGTH = 0x0001E000
+  cart_stack    (rw!x) : ORIGIN = 0x2001E000, LENGTH = 0x00002000
+  runtime_ram   (rw!x) : ORIGIN = 0x20020000, LENGTH = 0x0000E000
+  runtime_stack (rw!x) : ORIGIN = 0x2002E000, LENGTH = 0x00002000
   backup_ram    (rw!x) : ORIGIN = 0x47000000, LENGTH = 0x00002000
   nvm           (rx!w) : ORIGIN = 0x00804000, LENGTH = 0x00000200
 }

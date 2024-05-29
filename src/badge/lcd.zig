@@ -33,7 +33,7 @@ pub const green24: Color24 = .{ .r = 0x00, .g = 0xff, .b = 0x00 };
 pub const blue24: Color24 = .{ .r = 0x00, .g = 0x00, .b = 0xff };
 pub const white24: Color24 = .{ .r = 0xff, .g = 0xff, .b = 0xff };
 
-pub fn init(bpp: Bpp, fb: *const volatile FrameBuffer) void {
+pub fn init() void {
     @setCold(true);
 
     board.pin_tft_reset.set_dir(.out);
@@ -99,11 +99,10 @@ pub fn init(bpp: Bpp, fb: *const volatile FrameBuffer) void {
     send_cmd(ST7735.SWRESET, &.{}, 120 * std.time.us_per_ms);
     send_cmd(ST7735.SLPOUT, &.{}, 120 * std.time.us_per_ms);
     send_cmd(ST7735.INVOFF, &.{}, 1);
-    send_cmd(ST7735.COLMOD, &.{@intFromEnum(@as(ST7735.COLMOD_PARAM0, switch (bpp) {
-        .bpp12 => .@"12BPP",
-        .bpp16 => .@"16BPP",
-        .bpp24 => .@"24BPP",
-    }))}, 1);
+    send_cmd(ST7735.COLMOD, &.{@intFromEnum(@as(
+        ST7735.COLMOD_PARAM0,
+        .@"16BPP",
+    ))}, 1);
     var ca: [4]u8 = undefined;
     std.mem.writeInt(u16, ca[0..2], 0, .big);
     std.mem.writeInt(u16, ca[2..4], width - 1, .big);
@@ -133,7 +132,7 @@ pub fn init(bpp: Bpp, fb: *const volatile FrameBuffer) void {
 
     board.pin_tft_cs.write(.low);
     timer.delay_us(1);
-    dma.init_lcd(bpp, fb);
+    dma.init_lcd();
 }
 
 fn send_cmd(cmd: u8, params: []const u8, delay_us: u32) void {
@@ -157,35 +156,43 @@ fn send_cmd(cmd: u8, params: []const u8, delay_us: u32) void {
 
 var inverted = false;
 pub fn invert() void {
-    stop();
     inverted = !inverted;
     send_cmd(switch (inverted) {
         false => ST7735.INVOFF,
         true => ST7735.INVON,
     }, &.{}, 1);
-    start();
 }
 
-fn start() void {
+pub fn set_pixel(xy: u32, color: u16) void {
+    _ = xy;
+    _ = color;
+}
+
+pub fn clear(color: u16) void {
+    _ = color;
+}
+
+pub fn set_window(x1x2: u32, y1y2: u32) void {
+    //send_cmd(ST7735.CASET, &.{ 0x00, @truncate(x1x2 & 0xFF000000 >> 24), 0x00, @truncate(x1x2 & 0xFF00 >> 8) }, 5);
+    //send_cmd(ST7735.RASET, &.{ 0x00, @truncate(y1y2 & 0xFF000000 >> 24), 0x00, @truncate(y1y2 & 0xFF00 >> 8) }, 5);
+    _ = x1x2;
+    _ = y1y2;
+
+    send_cmd(ST7735.CASET, &.{ 0x00, 0x00, 0x00, 160 }, 1);
+    send_cmd(ST7735.RASET, &.{ 0x00, 0x00, 0x00, 128 }, 1);
+}
+
+pub fn write(buf: []u8) void {
     send_cmd(ST7735.RAMWR, &.{}, 1);
     board.pin_tft_cs.write(.low);
     timer.delay_us(1);
-    dma.start_lcd();
+    dma.write_to_lcd(buf);
 }
 
-fn stop() void {
-    dma.stop_lcd();
-    timer.delay_us(1);
+pub fn onDone() callconv(.C) void {
     board.pin_tft_cs.write(.high);
     timer.delay_us(1);
-}
-
-pub fn vsync() void {
-    dma.poll_ack_lcd();
-}
-
-pub fn update() void {
-    dma.resume_lcd();
+    dma.ack_lcd();
 }
 
 const ST7735 = struct {
